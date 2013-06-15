@@ -1,0 +1,38 @@
+main: # setting values
+
+      addi $sp $sp 12
+      
+      addi $a0 $sp 0
+      addi $a1 $0 8
+      addi $a2 $0 12
+
+      addi $t4 $0 312
+      addi $t5 $0 123
+
+      sll $t6 $a1 2
+      sll $t7 $a2 2
+
+      add $t6 $t6 $a0
+      add $t7 $t7 $a0
+
+      sw $t4 0($t6)
+      sw $t5 0($t7)
+
+      # actual program
+
+      sll $t0 $a1 2
+      sll $t1 $a2 2
+
+      add $t0 $a0 $t0
+      add $t1 $a0 $t1
+
+      lw $t2 0($t0)
+      lw $t3 0($t1)
+
+      sw $t2 0($t1)
+      sw $t3 0($t0)
+
+
+end:  addi $sp $sp -12
+      addi $v0 $0 10
+      syscall

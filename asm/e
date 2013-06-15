@@ -1,0 +1,12 @@
+lock:      addi $t1 $0 1
+           addi $sp $sp 4
+           sw   $s1 0($sp)
+           ll   $s1 0($a1)
+operation: slt  $t2 $a2 $s1 # $t2 = (x < shvar)
+           beqz $t2 unlock
+if:        addi $s1 $a2 0
+unlock:    sc   $s1 0($a1)
+           beqz $s1 lock
+           lw   $s1 0($sp)
+           addi $sp $sp -4
+
