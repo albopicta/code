@@ -1,0 +1,30 @@
+  .text
+  .globl main
+main:      addi $sp $sp -12
+           sw $s0 0($sp)  
+           sw $s1 4($sp)   
+           sw $s2 8($sp)
+           lw $t0 0($a0)
+           addi $s0 $0 0       # our result.
+           addi $s1 $0 1       # keeps track of 10^i
+           addi $s2 $0 10      # for convenient multiplying
+loop:      beq $a0 $0 cleanend # testing if we reached the end
+           sltiu $t1 $t0 48    # is our number less than 48
+           bne $t1 $0 errorend # if yes, error.
+           sltiu $t1 $t0 58    # is our number less than 58
+           beq $t1 $0 errorend # if not, error.
+           andi $t2 $t0 15     # this converts the number to the right one
+           mul $s1 $s1 $s2     # i = 10 * i
+           mul $t2 $t0 $s1     # t2 = A[i]*10^i
+           add $s0 $s0 $t2     # add A[i]*10^i to our result
+           addi $a0 4          
+           j loop
+errorend:  addi $v0 -1
+           j exit        
+cleanend:  add $v0 $s0 $0
+           j exit
+exit:      lw $s2 8($sp)
+           lw $s1 4($sp)
+           lw $s0 0($sp)
+           addi $sp $sp 12
+           syscall

@@ -1,0 +1,29 @@
+main: # setting values
+
+      addi $sp $sp 12
+      
+      addi $a0 $sp 0
+      addi $a1 $0 0
+      addi $a2 $0 4
+
+      addi $t4 $0 312
+      addi $t5 $0 123
+
+      sll $t6 $a1 2
+      sll $t7 $a2 2
+
+      add $t6 $t6 $a0
+      add $t7 $t7 $a0
+
+      sw $t4 0($t6)
+      sw $t5 0($t7)
+
+      # actual program
+      lw $t0 0($a0) # temp = *p
+      lw $t1 4($a0) # $t1 = *(p+1)
+      sw $t1 0($a0) # *p = *(p+1)
+      sw $t0 4($a0) # *(p+1) = temp
+
+end:  addi $sp $sp -12
+      addi $v0 $0 10
+      syscall

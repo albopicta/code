@@ -1,0 +1,16 @@
+lock:      addi $t4 $0 1
+           ll   $t3 0($a0)
+           beq  $t3 $t4 lock
+           sc   $t4 0($a0)
+           beq  $t4 $0 lock
+operation: addi $sp $sp 4
+           sw   $s1 0($sp)
+           lw   $s1 0($a1)
+min:       slt  $t2 $a2 $s1 # $t2 = (x < shvar)
+           beqz $t2 rest
+if:        addi $s1 $a2 0
+rest:      sw   $s1 0($a1)
+           lw   $s1 0($sp)
+           addi $sp $sp -4
+unlock:    sw   $0 0($a0)
+           syscall
