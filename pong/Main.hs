@@ -2,34 +2,41 @@ import Graphics.Gloss
 import Graphics.Gloss.Interface.IO.Game
 import Data.Fixed (mod')
 
+data Ball = Ball { ballPosX :: Float, ballPosY :: Float, ballVelX :: Float, ballVelY :: Float }
+  deriving (Eq, Ord, Show)
+
 data Paddle = Paddle { paddlePos :: Float, paddleVel :: Float }
   deriving (Eq, Ord, Show)
 
-makePaddle x dx = Paddle (clampScreen x) dx
+makePaddle x dx = Paddle (clampScreenY x) dx
 
-data World = World { paddle1 :: Paddle, paddle2 :: Paddle }
+data World = World { paddle1 :: Paddle, paddle2 :: Paddle, ball :: Ball  }
   deriving (Eq, Ord, Show)
 
-dimX, dimY, marginXPaddle, dimPaddle :: Float
+dimX, dimY, paddingXPaddle, dimPaddle :: Float
 dimX = 150
 dimY = 150
-marginXPaddle = 10
-marginYPaddle = 10
+paddingXPaddle = 10
+marginX = 0
+marginY = 10
 dimPaddle = 20
 velAdd = 150
 paddleOneOffset = 140
 paddleTwoOffset = -140
+ballRadius = 5
 
 clamp a b x = max a (min b x)
-clampScreen = clamp (-dimY + dimPaddle + marginYPaddle) (dimY - dimPaddle - marginYPaddle)
+clampScreenX = clamp (-dimY + marginX) (dimY - marginX)
+clampScreenY = clamp (-dimY + dimPaddle + marginY) (dimY - dimPaddle - marginY)
 
 background = dark (makeColor 0.3 0.3 0.3 0.3)
 
 path xCoord x = line [(xCoord, x-dimPaddle), (xCoord, x+dimPaddle)]
 
 animation :: World -> Picture
-animation w = Pictures [ color white (path (dimX - marginXPaddle) (paddlePos (paddle1 w))),
-                         color blue (path (-dimX + marginXPaddle) (paddlePos (paddle2 w)))]
+animation w = Pictures [ color white (path (dimX - paddingXPaddle) (paddlePos (paddle1 w))),
+                         color blue (path (-dimX + paddingXPaddle) (paddlePos (paddle2 w))),
+                         color white (Translate (ballPosX (ball w)) (ballPosY (ball w)) (circleSolid ballRadius))]
 
 updatePaddle1 :: (Paddle -> Paddle) -> World -> World
 updatePaddle1 f w = w { paddle1 = f (paddle1 w) }
@@ -37,45 +44,61 @@ updatePaddle1 f w = w { paddle1 = f (paddle1 w) }
 updatePaddle2 :: (Paddle -> Paddle) -> World -> World
 updatePaddle2 f w = w { paddle2 = f (paddle2 w) }
 
-updateVel :: Float -> Paddle -> Paddle
-updateVel dx p = p {paddleVel = paddleVel p + dx}
+updateBall :: (Ball -> Ball) -> World -> World
+updateBall f w = w { ball = f (ball w) }
 
-updatePos :: Float -> Paddle -> Paddle
-updatePos x p = p {paddlePos = clampScreen (paddlePos p + x)}
+updateBallPosX dt b = b {ballPosX = ballPosX b + dt * ballVelX b}
+updateBallPosY dt b = b {ballPosY = ballPosX b + dt * ballVelY b}
+
+timeStepBall :: Float -> Ball -> Ball
+--timeStepBall dt b = updateBall (updateBallPosY dt) (updateBall (updateBallPosX dt) b)
+timeStepBall dt b = updateBallPosY dt (updateBallPosX dt b)
+
+updatePaddleVel :: Float -> Paddle -> Paddle
+updatePaddleVel dx p = p {paddleVel = paddleVel p + dx}
+
+updatePaddlePos :: Float -> Paddle -> Paddle
+updatePaddlePos x p = p {paddlePos = clampScreenY (paddlePos p + x)}
+
 
 transition :: Event -> World -> World
-transition (EventKey (SpecialKey KeyUp)   Down _ _) = updatePaddle1 (updateVel velAdd)
-transition (EventKey (SpecialKey KeyUp)   Up   _ _) = updatePaddle1 (updateVel (-velAdd))
-transition (EventKey (SpecialKey KeyDown) Down _ _) = updatePaddle1 (updateVel (-velAdd))
-transition (EventKey (SpecialKey KeyDown) Up   _ _) = updatePaddle1 (updateVel velAdd)
+transition (EventKey (SpecialKey KeyUp)   Down _ _) = updatePaddle1 (updatePaddleVel velAdd)
+transition (EventKey (SpecialKey KeyUp)   Up   _ _) = updatePaddle1 (updatePaddleVel (-velAdd))
+transition (EventKey (SpecialKey KeyDown) Down _ _) = updatePaddle1 (updatePaddleVel (-velAdd))
+transition (EventKey (SpecialKey KeyDown) Up   _ _) = updatePaddle1 (updatePaddleVel velAdd)
 
-transition (EventKey (Char 'w') Down _ _) = updatePaddle2 (updateVel velAdd)
-transition (EventKey (Char 'w') Up   _ _) = updatePaddle2 (updateVel (-velAdd))
-transition (EventKey (Char 's') Down _ _) = updatePaddle2 (updateVel (-velAdd))
-transition (EventKey (Char 's') Up   _ _) = updatePaddle2 (updateVel velAdd)
+transition (EventKey (Char 'w') Down _ _) = updatePaddle2 (updatePaddleVel velAdd)
+transition (EventKey (Char 'w') Up   _ _) = updatePaddle2 (updatePaddleVel (-velAdd))
+transition (EventKey (Char 's') Down _ _) = updatePaddle2 (updatePaddleVel (-velAdd))
+transition (EventKey (Char 's') Up   _ _) = updatePaddle2 (updatePaddleVel velAdd)
 
 transition _ = id
+
+beginning = World (Paddle paddleOneOffset 0) 
+                  (Paddle paddleTwoOffset 0) 
+                  (Ball 0 0 50 5) -- update to random values later
 
 main = play (InWindow "Hello" (floor (2*dimX), floor (2*dimY)) (200,200))
             background
             60
-            (World (Paddle paddleOneOffset 0) (Paddle paddleTwoOffset 0))
+            beginning
             animation
             transition
             timeStep
 
 timeStepPaddle :: Float -> Paddle -> Paddle
-timeStepPaddle dt p = updatePos (paddleVel p * dt) p
+timeStepPaddle dt p = updatePaddlePos (paddleVel p * dt) p
+
 
 timeStep :: Float -> World -> World
-timeStep dt = updatePaddle1 (timeStepPaddle dt) . updatePaddle2 (timeStepPaddle dt)
+timeStep dt = updateBall (timeStepBall dt) . updatePaddle1 (timeStepPaddle dt) . updatePaddle2 (timeStepPaddle dt)
 
 
 {-
 path xCoord x = line [(xCoord, x-dimPaddle), (xCoord, x+dimPaddle)]
 
-animation (x,dx, b, db) = Pictures [color white (path (dimX - marginXPaddle) x), 
-                                    color blue (path (-dimX + marginXPaddle) b)]
+animation (x,dx, b, db) = Pictures [color white (path (dimX - paddingXPaddle) x), 
+                                    color blue (path (-dimX + paddingXPaddle) b)]
 
 main = play (InWindow "Hello" (floor (2*dimX), floor (2*dimY)) (200,200))
             background
